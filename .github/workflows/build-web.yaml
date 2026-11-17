@@ -1,0 +1,42 @@
+name: Build web dist
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: npm install
+        run: npm ci
+
+      - name: Build web
+        run: npm run build:dev
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wie-web-dist
+          path: wie-web/dist
+          if-no-files-found: error
