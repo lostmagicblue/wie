@@ -51,7 +51,7 @@ impl Allocator {
 
 #[cfg(test)]
 mod tests {
-    use wie_util::{Result, read_generic};
+    use wie_util::{ByteRead, ByteWrite, Result, read_generic};
 
     use crate::{
         Allocator, ArmCore,
