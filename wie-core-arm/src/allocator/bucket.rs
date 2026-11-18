@@ -62,6 +62,7 @@ impl BucketAllocator {
 
             tracing::info!("Bucket {slot_size} header size {header_len}");
 
+            core.map(header_address, header_len as u32)?;
             core.write_bytes(header_address, &vec![0xff; header_len])?;
         }
 
@@ -86,6 +87,7 @@ impl BucketAllocator {
                 let index = (offset + i) as u32;
                 let address = header_address + header_len as u32 + (index * 8 + bit) * slot_size as u32;
                 core.write_bytes(header_address + index, &[item & !(1 << bit)])?;
+                core.map(address, slot_size as u32)?;
 
                 return Ok(address);
             }

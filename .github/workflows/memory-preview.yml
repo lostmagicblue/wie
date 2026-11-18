@@ -1,0 +1,60 @@
+name: WIE memory-only preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [preview/memory-only]
+
+permissions:
+  contents: write
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt
+      - name: Check memory-patch formatting
+        run: rustfmt --edition 2024 --check wie-core-arm/src/allocator.rs wie-core-arm/src/allocator/bucket.rs wie-core-arm/src/allocator/list.rs wie-core-arm/src/thread.rs
+      - name: Test core allocator and thread regression
+        run: cargo test -p wie-core-arm --lib --release
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies (runner only)
+        run: npm ci
+      - name: Build release preview (never publishes main dist)
+        run: npm run build:prod
+      - name: Add source manifest
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const root='wie-web/dist';
+          const wasm=fs.readdirSync(root).filter(x=>x.endsWith('.wasm'));
+          if(wasm.length!==1) throw Error('expected one core WASM');
+          fs.writeFileSync(`${root}/memory-preview.json`,JSON.stringify({source:process.env.GITHUB_SHA,baseline:'c9840ff',scope:'lazy heap mapping and 64KB thread stacks only',wasm:wasm[0],sha256:crypto.createHash('sha256').update(fs.readFileSync(`${root}/${wasm[0]}`)).digest('hex')},null,2));
+          JS
+          cd wie-web/dist
+          zip -r ../../wie-memory-preview.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wie-memory-only-preview
+          path: |
+            wie-memory-preview.zip
+            wie-web/dist/memory-preview.json
+          if-no-files-found: error
+      - name: Publish separate core test package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view memory-only-preview --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create memory-only-preview --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Memory-only test build" --notes "Not the production site. Preserves baseline frontend; site integration is separate."
+          fi
+          gh release upload memory-only-preview wie-memory-preview.zip wie-web/dist/memory-preview.json --repo "$GITHUB_REPOSITORY" --clobber

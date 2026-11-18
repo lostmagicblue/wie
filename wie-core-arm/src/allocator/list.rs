@@ -38,6 +38,7 @@ impl ListAllocator {
     pub fn init(core: &mut ArmCore, base_address: u32, size: u32) -> Result<()> {
         let header = ListAllocationHeader::new(size, false);
 
+        core.map(base_address, size_of::<ListAllocationHeader>() as u32)?;
         write_generic(core, base_address, header)?;
 
         Ok(())
@@ -51,11 +52,13 @@ impl ListAllocator {
         let previous_header: ListAllocationHeader = read_generic(core, address)?;
 
         let header = ListAllocationHeader::new(size_to_alloc, true);
+        core.map(address, size_to_alloc)?;
         write_generic(core, address, header)?;
 
         // write next
         if previous_header.size() > size_to_alloc {
             let next_header = ListAllocationHeader::new(previous_header.size() - size_to_alloc, false);
+            core.map(address + size_to_alloc, size_of::<ListAllocationHeader>() as u32)?;
             write_generic(core, address + size_to_alloc, next_header)?;
         }
 
@@ -98,7 +101,10 @@ impl ListAllocator {
             return Ok(false);
         }
 
-        let header: ListAllocationHeader = read_generic(core, header_address)?;
+        let header: ListAllocationHeader = match read_generic(core, header_address) {
+            Err(WieError::InvalidMemoryAccess(_)) => return Ok(false),
+            result => result?,
+        };
         let allocation_size = (size as usize + size_of::<ListAllocationHeader>()).next_multiple_of(4) as u32 + CANARY_SIZE;
         Ok(header.in_use() && header.size() == allocation_size)
     }
