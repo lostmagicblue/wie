@@ -20,7 +20,7 @@ jobs:
       - name: Check memory-patch formatting
         run: rustfmt --edition 2024 --check wie-core-arm/src/allocator.rs wie-core-arm/src/allocator/bucket.rs wie-core-arm/src/allocator/list.rs wie-core-arm/src/thread.rs
       - name: Test core allocator and thread regression
-        run: cargo test -p wie-core-arm --lib --release
+        run: cargo test -p wie-core-arm -p wie-backend --lib --release
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack

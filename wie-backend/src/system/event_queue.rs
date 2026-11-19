@@ -44,6 +44,8 @@ impl KeyCode {
             "LEFT" => KeyCode::LEFT,
             "RIGHT" => KeyCode::RIGHT,
             "OK" => KeyCode::OK,
+            "LEFT_SOFT_KEY" => KeyCode::LEFT_SOFT_KEY,
+            "RIGHT_SOFT_KEY" => KeyCode::RIGHT_SOFT_KEY,
             "0" => KeyCode::NUM0,
             "1" => KeyCode::NUM1,
             "2" => KeyCode::NUM2,
@@ -123,6 +125,14 @@ mod tests {
     use crate::Instant;
 
     use super::{Event, EventQueue, KeyCode};
+
+    #[test]
+    fn parses_web_soft_keys_without_confusing_them_with_ok_or_clear() {
+        assert_eq!(KeyCode::parse("LEFT_SOFT_KEY"), KeyCode::LEFT_SOFT_KEY);
+        assert_eq!(KeyCode::parse("RIGHT_SOFT_KEY"), KeyCode::RIGHT_SOFT_KEY);
+        assert_eq!(KeyCode::parse("OK"), KeyCode::OK);
+        assert_eq!(KeyCode::parse("CLR"), KeyCode::CLEAR);
+    }
 
     #[test]
     fn prioritizes_input_and_coalesces_pending_redraws() {
